@@ -1,1 +1,2 @@
-FROM mongo:3.6.13
+# Use MongoDB 4.4 for better compatibility with legacy local volumes.
+FROM mongo:4.4

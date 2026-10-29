@@ -1,10 +1,9 @@
-version: '3'
-
 services:
   web:
     build: './web'
     ports:
-      - "5000:5000"
+      # map host port 5001 to container port 5000 to avoid conflicts with system services
+      - "5001:5000"
     links:
       - db
   db:
