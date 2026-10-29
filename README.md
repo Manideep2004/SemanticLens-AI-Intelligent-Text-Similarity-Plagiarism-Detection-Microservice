@@ -1,60 +1,110 @@
-# RESTful API For Similarity Check Using Natural Language Processing and Docker Compose
+# SemanticLens AI
 
-## INTRODUCTION
+SemanticLens AI is a small REST service that checks how similar two texts are. It uses spaCy for language processing, Flask for the API, MongoDB for user data, and Docker Compose to run everything together.
 
-- Build a Similarity check API using NLP, run and deploy using Docker & Docker-compose. 
+This is useful for a simple plagiarism-style check: send two sentences or paragraphs, and the service returns a score between 0 and 1. Closer to 1 means the texts are more alike.
 
------------------
+Each user starts with a limited number of tokens. Every `/detect` call spends one token. Tokens can be restored with the admin refill endpoint.
 
-### Documents similarity
-Document similarity (or distance between documents) is a one of the central themes in Information Retrieval. How humans usually define how similar are documents? Usually documents treated as similar if they are semantically close and describe similar concepts. On other hand “similarity” can be used in context of duplicate detection. We will review several common approaches.
+## Project layout
 
-![imageSimilarity](https://miro.medium.com/max/1838/1*l-BZLW3JUHd1MZbNq1MjQA.png)
+```text
+.
+├── docker-compose.yml   # starts the web API and MongoDB
+├── db/
+│   └── Dockerfile       # MongoDB image
+└── web/
+    ├── Dockerfile       # Flask app image
+    ├── app.py           # API logic
+    └── requirements.txt # Python packages
+```
 
------------------------
+## Endpoints
 
-#### OBJECTIVE
+Base URL after startup: `http://localhost:5001`
 
-`The objective of this API is to handle Similarity of text (PLAGIARISM CHECK) `
+| What it does | Path | Method | JSON body | What you get |
+|--------------|------|--------|-----------|--------------|
+| Create an account | `/register` | POST | `username`, `password` | `200` if the user is created, `301` if that username already exists |
+| Score two texts | `/detect` | POST | `username`, `password`, `text1`, `text2` | `200` plus a `ratio`, `301` unknown user, `302` wrong password, `303` no tokens left |
+| Add tokens | `/refill` | POST | `username`, `admin_pw`, `refill` | `200` if tokens are updated, `301` unknown user, `304` wrong admin password |
 
-## API ARCHITECTURE
-|RESOURCES |URL(PATH) |METHOD |PARAMETERS |STATUSCODE|
-|----------|-------|--------|--------------|----------|
-|Register a user | /register | POST | username, password | 200:OK,  301:INVALID USERNAME |
-|Detect Similarity of docs | /detect | POST | username, password , text1 & text2 |200:OK RETURN SIMILARITY ,   301:INVALID USERNAME,    302:INVALID PASSWORD,    303:OUT OF TOKENS
-|Refill | /refill | POST | username,  admin_pw,  refill_amount |  200:OK,  301:INVALID USERNAME , 304:INVALID ADMIN_PW
+The admin password used by `/refill` is `abc123`.
 
-------------------
+## What you need installed
 
+Only Docker Desktop (or Docker Engine plus Compose) is required on your machine. Python packages and the spaCy English model are installed when the web image is built.
 
-## REQUIREMENTS
+## Run the service
 
-- [spacy.io](https://spacy.io/models/en) is  an open-source software library for advanced Natural Language Processing, written in the programming languages Python, it is very easy python processing module. 
+From the project root:
 
-**Download the spacy model from [here](https://github.com/explosion/spacy-models/releases//tag/en_core_web_sm-2.1.0)**
+```bash
+docker compose up --build -d
+```
 
-- Flask framework, see how to install and run the flask framework [here](https://github.com/pallets/flask) , for more [details](https://www.fullstackpython.com/flask.html)
+Confirm both containers are up:
 
-- pymongo, PyMongo is a Python distribution containing tools for working with MongoDB download and install pymongo from [here](https://api.mongodb.com/python/current/)
+```bash
+docker compose ps
+```
 
-- [Docker](https://www.docker.com/)
+You should see a `web` service mapped to port `5001` and a `db` service for MongoDB.
 
-- Docker-compose.yml
+## Try the API
 
------------------------
+Create a user:
 
-## Contributing 
+```bash
+curl -X POST http://localhost:5001/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alice","password":"alice123"}'
+```
 
- Please feel free to fork this package and contribute by submitting a pull request to enhance the functionalities.
- 
- -------------------
+Compare two texts:
 
-## How can I thank you?
+```bash
+curl -X POST http://localhost:5001/detect \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alice","password":"alice123","text1":"Machine learning is fun","text2":"Machine learning is very fun"}'
+```
 
-Why not star the github repo? I'd love the attention! Why not share the link for this repository on Twitter, Hackernews or Destructoid ? Spread the word! 
+Restore tokens:
 
+```bash
+curl -X POST http://localhost:5001/refill \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alice","admin_pw":"abc123","refill":20}'
+```
 
-Thanks! Ore-Aruwaji Tola. 
+## Sample responses
 
+Successful registration:
 
+```json
+{"msg":"You successfully signed up for the API","status":200}
+```
 
+Successful similarity check:
+
+```json
+{"msg":"Similarity score calculated successfully","ratio":0.89,"status":200}
+```
+
+Successful refill:
+
+```json
+{"msg":"Refilled successfully","status":200}
+```
+
+## Stop the service
+
+```bash
+docker compose down
+```
+
+To also drop the MongoDB volume:
+
+```bash
+docker compose down -v
+```
