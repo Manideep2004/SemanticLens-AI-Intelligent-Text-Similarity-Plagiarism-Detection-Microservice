@@ -1,60 +1,83 @@
-# RESTful API For Similarity Check Using Natural Language Processing and Docker Compose
+# SemanticLens AI
 
-## INTRODUCTION
+Intelligent text similarity and plagiarism-check API, deployed with Docker Compose.
 
-- Build a Similarity check API using NLP, run and deploy using Docker & Docker-compose. 
+The API compares two pieces of text using NLP (spaCy) and returns a similarity score.
 
------------------
+## API endpoints
 
-### Documents similarity
-Document similarity (or distance between documents) is a one of the central themes in Information Retrieval. How humans usually define how similar are documents? Usually documents treated as similar if they are semantically close and describe similar concepts. On other hand “similarity” can be used in context of duplicate detection. We will review several common approaches.
+| Resource | Path | Method | Parameters | Status |
+|----------|------|--------|------------|--------|
+| Register a user | `/register` | POST | `username`, `password` | `200` OK, `301` invalid username |
+| Detect similarity | `/detect` | POST | `username`, `password`, `text1`, `text2` | `200` returns similarity, `301` invalid username, `302` invalid password, `303` out of tokens |
+| Refill tokens | `/refill` | POST | `username`, `admin_pw`, `refill` | `200` OK, `301` invalid username, `304` invalid admin password |
 
-![imageSimilarity](https://miro.medium.com/max/1838/1*l-BZLW3JUHd1MZbNq1MjQA.png)
+Admin password for refill: `abc123`
 
------------------------
-
-#### OBJECTIVE
-
-`The objective of this API is to handle Similarity of text (PLAGIARISM CHECK) `
-
-## API ARCHITECTURE
-|RESOURCES |URL(PATH) |METHOD |PARAMETERS |STATUSCODE|
-|----------|-------|--------|--------------|----------|
-|Register a user | /register | POST | username, password | 200:OK,  301:INVALID USERNAME |
-|Detect Similarity of docs | /detect | POST | username, password , text1 & text2 |200:OK RETURN SIMILARITY ,   301:INVALID USERNAME,    302:INVALID PASSWORD,    303:OUT OF TOKENS
-|Refill | /refill | POST | username,  admin_pw,  refill_amount |  200:OK,  301:INVALID USERNAME , 304:INVALID ADMIN_PW
-
-------------------
-
-
-## REQUIREMENTS
-
-- [spacy.io](https://spacy.io/models/en) is  an open-source software library for advanced Natural Language Processing, written in the programming languages Python, it is very easy python processing module. 
-
-**Download the spacy model from [here](https://github.com/explosion/spacy-models/releases//tag/en_core_web_sm-2.1.0)**
-
-- Flask framework, see how to install and run the flask framework [here](https://github.com/pallets/flask) , for more [details](https://www.fullstackpython.com/flask.html)
-
-- pymongo, PyMongo is a Python distribution containing tools for working with MongoDB download and install pymongo from [here](https://api.mongodb.com/python/current/)
+## Requirements
 
 - [Docker](https://www.docker.com/)
+- Docker Compose (included with Docker Desktop)
 
-- Docker-compose.yml
+spaCy, Flask, PyMongo, and bcrypt are installed automatically inside the Docker image.
 
------------------------
+## How to run
 
-## Contributing 
+1. Open a terminal in this project folder.
 
- Please feel free to fork this package and contribute by submitting a pull request to enhance the functionalities.
- 
- -------------------
+2. Start the app:
+```bash
+docker compose up --build -d
+```
 
-## How can I thank you?
+3. Check that both services are running:
+```bash
+docker compose ps
+```
 
-Why not star the github repo? I'd love the attention! Why not share the link for this repository on Twitter, Hackernews or Destructoid ? Spread the word! 
+The API is available at `http://localhost:5001`
 
+4. Register a user:
+```bash
+curl -X POST http://localhost:5001/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alice","password":"alice123"}'
+```
 
-Thanks! Ore-Aruwaji Tola. 
+5. Compare two texts:
+```bash
+curl -X POST http://localhost:5001/detect \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alice","password":"alice123","text1":"Machine learning is fun","text2":"Machine learning is very fun"}'
+```
 
+6. Refill tokens:
+```bash
+curl -X POST http://localhost:5001/refill \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alice","admin_pw":"abc123","refill":20}'
+```
 
+7. Stop the app:
+```bash
+docker compose down
+```
 
+## Example output
+
+Register:
+```json
+{"msg":"You successfully signed up for the API","status":200}
+```
+
+Detect:
+```json
+{"msg":"Similarity score calculated successfully","ratio":0.89,"status":200}
+```
+
+Refill:
+```json
+{"msg":"Refilled successfully","status":200}
+```
+
+A higher `ratio` means the two texts are more similar.
