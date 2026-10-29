@@ -1,83 +1,110 @@
 # SemanticLens AI
 
-Intelligent text similarity and plagiarism-check API, deployed with Docker Compose.
+SemanticLens AI is a small REST service that checks how similar two texts are. It uses spaCy for language processing, Flask for the API, MongoDB for user data, and Docker Compose to run everything together.
 
-The API compares two pieces of text using NLP (spaCy) and returns a similarity score.
+This is useful for a simple plagiarism-style check: send two sentences or paragraphs, and the service returns a score between 0 and 1. Closer to 1 means the texts are more alike.
 
-## API endpoints
+Each user starts with a limited number of tokens. Every `/detect` call spends one token. Tokens can be restored with the admin refill endpoint.
 
-| Resource | Path | Method | Parameters | Status |
-|----------|------|--------|------------|--------|
-| Register a user | `/register` | POST | `username`, `password` | `200` OK, `301` invalid username |
-| Detect similarity | `/detect` | POST | `username`, `password`, `text1`, `text2` | `200` returns similarity, `301` invalid username, `302` invalid password, `303` out of tokens |
-| Refill tokens | `/refill` | POST | `username`, `admin_pw`, `refill` | `200` OK, `301` invalid username, `304` invalid admin password |
+## Project layout
 
-Admin password for refill: `abc123`
+```text
+.
+├── docker-compose.yml   # starts the web API and MongoDB
+├── db/
+│   └── Dockerfile       # MongoDB image
+└── web/
+    ├── Dockerfile       # Flask app image
+    ├── app.py           # API logic
+    └── requirements.txt # Python packages
+```
 
-## Requirements
+## Endpoints
 
-- [Docker](https://www.docker.com/)
-- Docker Compose (included with Docker Desktop)
+Base URL after startup: `http://localhost:5001`
 
-spaCy, Flask, PyMongo, and bcrypt are installed automatically inside the Docker image.
+| What it does | Path | Method | JSON body | What you get |
+|--------------|------|--------|-----------|--------------|
+| Create an account | `/register` | POST | `username`, `password` | `200` if the user is created, `301` if that username already exists |
+| Score two texts | `/detect` | POST | `username`, `password`, `text1`, `text2` | `200` plus a `ratio`, `301` unknown user, `302` wrong password, `303` no tokens left |
+| Add tokens | `/refill` | POST | `username`, `admin_pw`, `refill` | `200` if tokens are updated, `301` unknown user, `304` wrong admin password |
 
-## How to run
+The admin password used by `/refill` is `abc123`.
 
-1. Open a terminal in this project folder.
+## What you need installed
 
-2. Start the app:
+Only Docker Desktop (or Docker Engine plus Compose) is required on your machine. Python packages and the spaCy English model are installed when the web image is built.
+
+## Run the service
+
+From the project root:
+
 ```bash
 docker compose up --build -d
 ```
 
-3. Check that both services are running:
+Confirm both containers are up:
+
 ```bash
 docker compose ps
 ```
 
-The API is available at `http://localhost:5001`
+You should see a `web` service mapped to port `5001` and a `db` service for MongoDB.
 
-4. Register a user:
+## Try the API
+
+Create a user:
+
 ```bash
 curl -X POST http://localhost:5001/register \
   -H "Content-Type: application/json" \
   -d '{"username":"alice","password":"alice123"}'
 ```
 
-5. Compare two texts:
+Compare two texts:
+
 ```bash
 curl -X POST http://localhost:5001/detect \
   -H "Content-Type: application/json" \
   -d '{"username":"alice","password":"alice123","text1":"Machine learning is fun","text2":"Machine learning is very fun"}'
 ```
 
-6. Refill tokens:
+Restore tokens:
+
 ```bash
 curl -X POST http://localhost:5001/refill \
   -H "Content-Type: application/json" \
   -d '{"username":"alice","admin_pw":"abc123","refill":20}'
 ```
 
-7. Stop the app:
-```bash
-docker compose down
-```
+## Sample responses
 
-## Example output
+Successful registration:
 
-Register:
 ```json
 {"msg":"You successfully signed up for the API","status":200}
 ```
 
-Detect:
+Successful similarity check:
+
 ```json
 {"msg":"Similarity score calculated successfully","ratio":0.89,"status":200}
 ```
 
-Refill:
+Successful refill:
+
 ```json
 {"msg":"Refilled successfully","status":200}
 ```
 
-A higher `ratio` means the two texts are more similar.
+## Stop the service
+
+```bash
+docker compose down
+```
+
+To also drop the MongoDB volume:
+
+```bash
+docker compose down -v
+```
